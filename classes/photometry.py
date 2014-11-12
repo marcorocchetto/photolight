@@ -250,9 +250,6 @@ class Photometry(object):
                 self.yc[apsize][n] = frame[1]
                 self.skystd[apsize][n] = frame[2]
                 self.psky[apsize][n] = frame[3]
-
-                print frame[3]
-
                 self.fluxsum[apsize][n] = frame[4]
                 self.parea[apsize][n] = frame[5]
                 self.flux[apsize][n] = frame[6]
