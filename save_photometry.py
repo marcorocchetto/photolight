@@ -42,10 +42,15 @@ def main():
 
     options, remainder = parser.parse_args()
 
-    pars = Parameters(options.param_filename)
+    param_filename = os.path.expanduser(options.param_filename)
+    photometry_instance = os.path.expanduser(options.photometry_instance)
+    output_filename = os.path.expanduser(options.output_filename)
+
+
+    pars = Parameters(param_filename)
 
     try:
-        photometry = pickle.load(open(options.photometry_instance))
+        photometry = pickle.load(open(photometry_instance))
         logging.info('Photometry instance correctly initialised')
     except:
         logging.error('Cannot load photometry instance. Check argument -i')
@@ -58,9 +63,9 @@ def main():
     if options.print_data == 'mag':
         bjd = np.asarray(photometry.dataset.bjd)
         mag = np.nan_to_num(photometry.aperture[float(options.aperture_size)].mag)
-        #np.savetxt(options.output_filename, np.column_stack((bjd,mag)), fmt='%.7e')
+        #np.savetxt(output_filename, np.column_stack((bjd,mag)), fmt='%.7e')
 
-        f = open(options.output_filename, 'wb')
+        f = open(output_filename, 'wb')
         for n in range(photometry.nobs):
             line = '%.7e' % bjd[n]
             for i in range(3):
@@ -73,7 +78,7 @@ def main():
         mag = np.nan_to_num(photometry.aperture[float(options.aperture_size)].mag[:,:3])
         sigmag = np.nan_to_num(photometry.aperture[float(options.aperture_size)].sigmag[:,:3])
 
-        f = open(options.output_filename, 'wb')
+        f = open(output_filename, 'wb')
         for n in range(photometry.nobs):
             line = '%.7e' % bjd[n]
             for i in range(3):

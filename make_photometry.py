@@ -34,11 +34,15 @@ def main():
     )
 
     options, remainder = parser.parse_args()
+    dataset_instance = os.path.expanduser(options.dataset_instance)
+    param_filename = os.path.expanduser(options.param_filename)
+    output_filename = os.path.expanduser(options.output_filename)
 
-    pars = Parameters(options.param_filename)
+
+    pars = Parameters(param_filename)
 
     try:
-        dataset = pickle.load(open(options.dataset_instance))
+        dataset = pickle.load(open(dataset_instance))
         logging.info('Dataset instance correctly initialised')
     except:
         logging.error('Cannot load dataset instance. Check argument -i')
@@ -49,8 +53,8 @@ def main():
 
     photometry = Photometry(dataset, pars)
 
-    pickle.dump(photometry, open(options.output_filename, 'wb'))
-    logging.info('Photometry instance saved in %s' % options.output_filename)
+    pickle.dump(photometry, open(output_filename, 'wb'))
+    logging.info('Photometry instance saved in %s' % output_filename)
 
 
 if __name__ == '__main__':

@@ -35,14 +35,18 @@ def main():
 
     options, remainder = parser.parse_args()
 
-    pars = Parameters(options.param_filename)
+    param_filename = os.path.expanduser(options.param_filename)
+    output_filename = os.path.expanduser(options.output_filename)
+    source_directory = os.path.expanduser(options.source_directory)
+
+    pars = Parameters(param_filename)
 
     target = Target(pars)
-    dataset = Dataset(target, odir=options.source_directory)
+    dataset = Dataset(target, odir=source_directory)
     dataset.create_master_frame()
 
-    pickle.dump(dataset, open(options.output_filename, 'wb'))
-    logging.info('Dataset instance saved in %s' % options.output_filename)
+    pickle.dump(dataset, open(output_filename, 'wb'))
+    logging.info('Dataset instance saved in %s' % output_filename)
 
     logging.info('Master frame fits, png and catalogue files are saved in %s' %
                  os.path.join(dataset.pars.wdir, dataset.masterdir))
