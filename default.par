@@ -1,0 +1,42 @@
+[General]
+verbose = True
+wdir = /tmp
+compute_fluxes = False
+scint_noise_corr = True
+log = photolight.log
+
+[IRAF photometry]
+irafcall = True
+salgori = median
+annulus = 25
+dannulu = 15
+calgori = centroid
+cbox = 10
+maxshif = 3
+
+[IRAF combine]
+scale = mode
+weight = mode
+combine = median
+ 
+[Dataset]
+# create sexetractor catalogues for all stars, and determine fwhm of all stars in all frames
+run_all_sex = True
+# chip edge limits in pixels. Stars in the edges of the chip will be excluded
+edge_limit = 30 
+# number of frames to stack to create master frame.
+master_nstack = 5    
+# max number of stars to keep in the master catalogue
+master_max_stars = 50
+# maximum offset allowed for frames in arcminutes
+frame_max_offset = 3
+# Detection threshold for Sextractor. Default is 15
+detect_tresh = 15
+# Automatically ignore frames without plate solution
+ignore_unsolved_frames = True
+# Minimum number of frame to proceed with photometry
+min_frames = 5
+
+[Executables]
+sex = /usr/bin/sex
+vartools = /usr/bin/vartools

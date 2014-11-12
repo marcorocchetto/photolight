@@ -19,13 +19,6 @@ class RobustStatistic():
 
         # add intercept
         X = sm.add_constant(x)
-
-        # Run Robust Linear Model
-        print 'Running RLM statistics:'
-        print len(y), len(X)
-        print y
-        print X
-        print 'End'
         self.rlm = sm.RLM(y, X, missing='none', M=sm.robust.norms.TukeyBiweight()).fit()
         self.rlm_resid = self.rlm.resid  # residuals
 
