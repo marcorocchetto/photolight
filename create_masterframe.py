@@ -35,9 +35,9 @@ def main():
 
     options, remainder = parser.parse_args()
 
-    param_filename = os.path.expanduser(options.param_filename)
-    output_filename = os.path.expanduser(options.output_filename)
-    source_directory = os.path.expanduser(options.source_directory)
+    param_filename = os.path.abspath(os.path.expanduser(options.param_filename))
+    output_filename = os.path.abspath(os.path.expanduser(options.output_filename))
+    source_directory = os.path.abspath(os.path.expanduser(options.source_directory))
 
     pars = Parameters(param_filename)
 

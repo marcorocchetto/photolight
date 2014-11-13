@@ -34,9 +34,9 @@ def main():
     )
 
     options, remainder = parser.parse_args()
-    dataset_instance = os.path.expanduser(options.dataset_instance)
-    param_filename = os.path.expanduser(options.param_filename)
-    output_filename = os.path.expanduser(options.output_filename)
+    dataset_instance = os.path.abspath(os.path.expanduser(options.dataset_instance))
+    param_filename = os.path.abspath(os.path.expanduser(options.param_filename))
+    output_filename = os.path.abspath(os.path.expanduser(options.output_filename))
 
 
     pars = Parameters(param_filename)

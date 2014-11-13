@@ -42,9 +42,9 @@ def main():
 
     options, remainder = parser.parse_args()
 
-    param_filename = os.path.expanduser(options.param_filename)
-    photometry_instance = os.path.expanduser(options.photometry_instance)
-    output_filename = os.path.expanduser(options.output_filename)
+    param_filename = os.path.abspath(os.path.expanduser(options.param_filename))
+    photometry_instance = os.path.abspath(os.path.expanduser(options.photometry_instance))
+    output_filename = os.path.abspath(os.path.expanduser(options.output_filename))
 
 
     pars = Parameters(param_filename)
