@@ -19,9 +19,9 @@ class Parameters():
         self.default_parser.read('default.par')
 
         self.verbose = self.getpar('General', 'verbose', 'bool')
-        self.wdir = self.getpar('General', 'wdir')
+        self.wdir = os.path.expanduser(self.getpar('General', 'wdir'))
 
-        logging.basicConfig(filename=self.getpar('General', 'log'), level=logging.INFO)
+        logging.basicConfig(filename=os.path.expanduser(self.getpar('General', 'log')), level=logging.INFO)
 
         # define a Handler which writes INFO messages or higher to the sys.stderr
         console = logging.StreamHandler()
