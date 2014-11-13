@@ -1,5 +1,3 @@
 photolight
 ==========
-
-asdasdasdasda
-AAAAAAA
+New readme
