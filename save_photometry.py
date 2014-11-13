@@ -1,5 +1,3 @@
-#! /usr/bin/python -W ignore
-
 import sys
 import optparse
 import logging
