@@ -65,7 +65,7 @@ def main():
 
         f = open(output_filename, 'wb')
         for n in range(photometry.nobs):
-            line = '%.7e' % bjd[n]
+            line = '%.10e' % bjd[n]
             for i in range(3):
                 line += ' %.7e' % mag[n, i]
             f.write(line + '\n')
@@ -78,7 +78,7 @@ def main():
 
         f = open(output_filename, 'wb')
         for n in range(photometry.nobs):
-            line = '%.7e' % bjd[n]
+            line = '%.10e' % bjd[n]
             for i in range(3):
                 line += ' %.7e %.7e' % (mag[n, i], sigmag[n, i])
             f.write(line + '\n')
