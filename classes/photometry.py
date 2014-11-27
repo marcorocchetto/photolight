@@ -19,7 +19,7 @@ class Photometry(object):
 
         logging.info('Initialize class Photometry')
 
-        # inherit parameters class from object
+        # inherit parameters class from dataset
         if not pars:
             self.pars = dataset.pars
         else:
@@ -27,7 +27,7 @@ class Photometry(object):
 
         self.dataset = dataset
         self.targetid = dataset.targetid
-        self.object = dataset.object
+        self.target = dataset.target
         self.nobs = dataset.nobs
         self.nstar = dataset.nstar
         self.apsizes = self.pars.photometry['apertures']

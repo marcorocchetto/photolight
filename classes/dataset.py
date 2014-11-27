@@ -14,20 +14,20 @@ from list_frames import *
 
 class Dataset(object):
 
-    def __init__(self, object, odir=None, pars=None):
+    def __init__(self, target, odir=None, pars=None):
 
         import datetime
 
         logging.info('Initialize class Lightcurve')
 
-        # inherit parameters class from object
+        # inherit parameters class from target
         if not pars:
-            self.pars = object.pars
+            self.pars = target.pars
         else:
             self.pars = pars
 
-        # store the object instance locally
-        self.object = object
+        # store the target instance locally
+        self.target = target
 
         # source files directory
         if odir:
@@ -126,7 +126,7 @@ class Dataset(object):
         logging.info('Calendar date is %s, Julian date is %s' % (self.cdate, self.jdate))
 
         # set directory names
-        self.datedir = os.path.join(self.object.mname, str(self.cdate))
+        self.datedir = os.path.join(self.target.mname, str(self.cdate))
         self.telescopedir = os.path.join(self.datedir, self.pars.telescope['name'])
         self.framesdir = os.path.join(self.telescopedir, 'frames')
         self.masterdir = os.path.join(self.telescopedir, 'master')
@@ -136,7 +136,7 @@ class Dataset(object):
         self.masterpngpath = os.path.join(self.pars.wdir, self.masterdir, 'master.png')
 
         # create directories for the julian date and telescope
-        create_dirs = [os.path.join(self.pars.wdir, self.object.mname),
+        create_dirs = [os.path.join(self.pars.wdir, self.target.mname),
                        os.path.join(self.pars.wdir, self.datedir),
                        os.path.join(self.pars.wdir, self.telescopedir),
                        os.path.join(self.pars.wdir, self.framesdir),
@@ -276,8 +276,8 @@ class Dataset(object):
 
         k = 0
         for line in mastercat_final:
-            xshift = float(self.object.dec_d - line[1])
-            yshift = float(self.object.ra_d - line[0])
+            xshift = float(self.target.dec_d - line[1])
+            yshift = float(self.target.ra_d - line[0])
             shift = math.sqrt(xshift**2 + yshift**2)
             if shift < 0.005:
                 self.targetid = k
@@ -289,8 +289,8 @@ class Dataset(object):
             # the planet was not found in the final list, check if it's been excluded
             logging.info('The target was not found in the final catalogue. Check for fainter stars...')
             for line in mastercat_edge:
-                if math.fabs(float(self.object.dec_d - line[1])) < 0.005 and \
-                   math.fabs(float(self.object.ra_d - line[0])) < 0.005:
+                if math.fabs(float(self.target.dec_d - line[1])) < 0.005 and \
+                   math.fabs(float(self.target.ra_d - line[0])) < 0.005:
                     # the target is in the original master catalogue of stars. It was too faint to be included
                     # in the catalogue. Add it now and exclude faintest star.
                     del mastercat_final[len(mastercat_final)-1]
@@ -306,7 +306,7 @@ class Dataset(object):
             logging.error('The target was not found in the final catalogue. ')
             sys.exit()
 
-        logging.info('Target detected! %s is star number %i' % (self.object.name, self.targetid))
+        logging.info('Target detected! %s is star number %i' % (self.target.name, self.targetid))
 
         # rewrite an iraf.tvmark version of the catalogue
         mastercat_tvmark = []
@@ -454,8 +454,8 @@ class Dataset(object):
         f.close()
 
         # ra and dec of target, used to calculate BJD
-        ra = self.object.ra_d
-        dec = self.object.dec_d
+        ra = self.target.ra_d
+        dec = self.target.dec_d
 
         # run vartools -converttime, write the BJD values to bjd_filename
         runvartools = self.pars.vartools + " -i " + utc_filename
