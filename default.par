@@ -2,8 +2,90 @@
 verbose = True
 wdir = /tmp
 compute_fluxes = False
-scint_noise_corr = True
+bad_frames_exclusion = True
+rescale_errorbars = True
+rescale_errorbars = True
 log = photolight.log
+
+[Target]
+name = V700Cyg
+ra = 20 31 05.25
+dec = +38 47 00.5
+
+[Observatory]
+name = ULO
+elevation = 81
+longitude = 0.24
+latitude = 51.6133
+
+[Telescope]
+name = c14w
+egain = 2.53
+rdnoise = 10
+# telescope aperture in cm!
+aperture = 35
+
+[Filter]
+name = Rc
+midwav = 650
+
+[Photometry]
+# add photometry aperture radii here (separated by commas, eg, 7,8,9)
+multithread = True
+apertures = 7
+tool = iraf
+
+
+[Dataset]
+# create sexetractor catalogues for all stars, and determine fwhm of all stars in all frames
+run_all_sex = True
+# chip edge limits in pixels. Stars in the edges of the chip will be excluded
+edge_limit = 30
+# number of frames to stack to create master frame.
+master_nstack = 5
+# max number of stars to keep in the master catalogue
+master_max_stars = 50
+# maximum offset allowed for frames in arcminutes
+frame_max_offset = 3
+# Detection threshold for Sextractor. Default is 15
+detect_tresh = 15
+# Automatically ignore frames without plate solution
+ignore_unsolved_frames = True
+# Minimum number of frame to proceed with photometry
+min_frames = 5
+
+[HeadersKeys]
+# specify here the fits header keys. Can specify multiple keys, separated by a comma.
+egain = EGAIN
+dateobs = DATE-OBS
+imagetyp = IMAGETYP
+filter = FILTER
+ccdtemp = CCD-TEMP
+object = OBJECT
+objctra = OBJCTRA
+objctdec = OBJCTDEC
+naxis1 = NAXIS1
+naxis2 = NAXIS2
+# specify the cctemp units (kelvin, celsius)
+ccdtemp_units = celsius
+
+
+[PlateSolve]
+# plate solve frames
+platesolve = True
+# overwrite plate solution of frames that are already solved
+overwrite = False
+# astrometry.net solve-field path
+solvefield_path = /usr/local/astrometry/bin/solve-field
+# directory in which the indexes are stored
+data_dir = /usr/local/astrometry/data
+# use header coordinates RA and DEC to give approximate solution
+use_coordinates = True
+# search radius (only if use_coordinates is True)
+search_radius = 1
+# additional flags to solve-field
+flags = --scale-units arcsecperpix --scale-low 0.83 --scale-high 0.90 --overwrite
+
 
 [IRAF photometry]
 irafcall = True
@@ -18,24 +100,6 @@ maxshif = 3
 scale = mode
 weight = mode
 combine = median
- 
-[Dataset]
-# create sexetractor catalogues for all stars, and determine fwhm of all stars in all frames
-run_all_sex = True
-# chip edge limits in pixels. Stars in the edges of the chip will be excluded
-edge_limit = 30 
-# number of frames to stack to create master frame.
-master_nstack = 5    
-# max number of stars to keep in the master catalogue
-master_max_stars = 50
-# maximum offset allowed for frames in arcminutes
-frame_max_offset = 3
-# Detection threshold for Sextractor. Default is 15
-detect_tresh = 15
-# Automatically ignore frames without plate solution
-ignore_unsolved_frames = True
-# Minimum number of frame to proceed with photometry
-min_frames = 5
 
 [Executables]
 sex = /usr/bin/sex

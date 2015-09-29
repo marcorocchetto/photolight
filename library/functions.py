@@ -3,20 +3,21 @@ ETAS Functions
 Last update: 14 Aug 2014
 '''
 
+from astropy.io import fits
 
-def internet_on():
+def get_header(fname, index=0):
+    hdulist = fits.open(fname)
+    header = hdulist[index].header
+    return header
 
-    # check internet connection
-
-    import urllib2
-
-    try:
-        response=urllib2.urlopen('http://74.125.228.100', timeout=1)
-        return True
-    except urllib2.URLError as err:
-        pass
-
+def get_headerval_from_keywords(header, keywords):
+    for keyword in keywords:
+        if keyword.upper() in header.keys():
+            if type(header[keyword]) == str:
+                return header[keyword].upper()
+            return header[keyword]
     return False
+
 
 def converter(x):
 

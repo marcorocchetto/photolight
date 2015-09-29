@@ -4,20 +4,20 @@ import logging
 import sys
 
 class Target(object):
-    def __init__(self, pars=None):
+    def __init__(self, params=None):
 
-        if not pars:
+        if not params:
             logging.error('You need to specify a parameter file!')
             sys.exit()
 
-        self.pars = pars
+        self.params = params
 
         # ra and dec are used to insert planets that are not in the catalogue
         logging.info('Initialize class Target')
 
-        name = pars.target['name']
-        ra = pars.target['ra']
-        dec = pars.target['dec']
+        name = params.target['name']
+        ra = params.target['ra']
+        dec = params.target['dec']
         if not name or not ra or not dec:
             logging.error('You need to specify the name and coordinates of your object!')
             sys.exit()

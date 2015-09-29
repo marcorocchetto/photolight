@@ -7,7 +7,7 @@ def list_frames(dir, exclude=[]):
 
 
     platekeys = ['CTYPE1', 'CRVAL1', 'CRPIX1', 'CTYPE2', 'CRVAL2', 'CRPIX2', 'CD1_1', 'CD1_2', 'CD2_1', 'CD2_2']
-    stkeys = ['DATE-OBS', 'EXPTIME', 'AIRMASS', 'CRVAL1', 'CRVAL2']
+    stkeys = ['DATE-OBS', 'EXPTIME', 'AIRMASS']
 
     valid_frames = {}
     k = 0
@@ -26,6 +26,7 @@ def list_frames(dir, exclude=[]):
                     if key in header:
                         valid_frames[k][key] = header[key]
                     else:
+                        print 'Miss key %s file %s ' % (key, name)
                         print 'There are missing header keys' # @todo convert to log
                         return False # return if one frame does not have a
 

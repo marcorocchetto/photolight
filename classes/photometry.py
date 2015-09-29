@@ -11,6 +11,10 @@ from pyraf import iraf
 from functions import *
 from list_frames import *
 
+
+
+
+
 np.set_printoptions(threshold=np.nan)
 
 class Photometry(object):
@@ -47,8 +51,13 @@ class Photometry(object):
 
         if self.dataset.frames:
 
-            # run iraf photometry
-            self.run_iraf()
+            if self.pars.photometry['tool'] == 'iraf':
+                # run iraf photometry
+                self.run_iraf()
+            elif self.pars.photometry['tool'] == 'photutils':
+                # run photutils photometry
+                self.run_photutils()
+
 
             # multithreading: if enabled, each aperture is executed as a separate thread.
             # the aperture tasks are run using an instance of the class Aperture, which is then saved
@@ -100,17 +109,26 @@ class Photometry(object):
                     # print out logs
                     for log in self.aperture[apsize].aplog:
                         logging.info(log)
-                    del self.aperture[apsize].aplog
+                    #del self.aperture[apsize].aplog
+
+
+    def run_photutils(self):
+
+        pass
+
 
     def run_iraf(self):
 
+        # set iraf photometry working directory
+        self.irafphotdir = os.path.join(self.dataset.telescopedir, 'irafphot')
 
         if not self.pars.iraf_phot['irafcall']:
             logging.info('Skip IRAF call')
+            for n in self.dataset.frames:
+                filen = os.path.join(self.pars.wdir, self.dataset.framesdir, 'd%s.fits' % str(n).zfill(5))
+                self.dataset.frames[n]['irafpath'] = filen
         else:
 
-            # set iraf photometry working directory
-            self.irafphotdir = os.path.join(self.dataset.telescopedir, 'irafphot')
             directory = os.path.join(self.pars.wdir, self.irafphotdir)
             if not os.path.isdir(directory):
                 try:
@@ -132,7 +150,7 @@ class Photometry(object):
                 if not os.path.exists(filen):
                     logging.debug('From %s to %s' % (self.dataset.frames[n]['path'], filen))
                     os.symlink(self.dataset.frames[n]['path'], filen)
-                    self.dataset.frames[n]['irafpath'] = filen
+                self.dataset.frames[n]['irafpath'] = filen
 
             f1 = open(os.path.join(self.pars.wdir, self.dataset.framesdir, 'imagelist'), 'w')
             for n in self.dataset.frames:
@@ -264,6 +282,7 @@ class Aperture(object):
     def __init__(self, photometry, apsize):
 
         self.p = photometry
+        self.dataset = self.p.dataset
         self.apsize = apsize
         self.siggcd = []
         self.mag = []
@@ -284,11 +303,16 @@ class Aperture(object):
         self.eflux = []
         self.star_exclude = []
         self.sigsky = []
+        self.rlm_redchi2 = []
+        self.rlm_polyfit = []
+        self.rlm_x = []
+        self.rlm_y = []
 
         # default values for error bars scaling factors and signoise correction
         self.sigscalefactor = 1
         self.scintnoisecorr = 1
         self.sigscint_corr = 1
+
 
         self.rms = []
         self.mags_model = []
@@ -307,6 +331,9 @@ class Aperture(object):
         self.sigscint_predicted = self.p.dataset.sigscint
         self.rdnoise = self.pars.telescope['rdnoise']
 
+        self.frames_mask = np.ones(self.nobs, dtype=bool)
+        self.stars_mask = np.ones(self.nstar, dtype=bool)
+
         # calculate poisson + background noise for this aperture
         log = '[%.2f px] Calculate poisson and background noise' % self.apsize
         self.aplog.append(log)
@@ -323,13 +350,13 @@ class Aperture(object):
         self.sigmag = np.sqrt((self.sigccd)**2+np.array([self.sigscint_predicted]*self.nstar).transpose()**2)
 
 
-        # perform preliminary outlier rejection (5 sigma from median magnitude) @todo: Include it or not??
-        log = '[%.2f px] Perform preiminary outlier rejetion' % self.apsize
-        self.aplog.append(log)
-        self.outliers = np.empty((self.nobs, self.nstar))
-        for i in range(self.nstar):
-            ratio = np.abs((self.mag[:,i]-np.nanmedian(self.mag[:,i]))/np.nanstd(self.mag[:,i]))
-            self.outliers[:, i] = np.less_equal(ratio, 5)
+        # # perform preliminary outlier rejection (5 sigma from median magnitude) @todo: Include it or not??
+        # log = '[%.2f px] Perform preiminary outlier rejetion' % self.apsize
+        # self.aplog.append(log)
+        # self.outliers = np.empty((self.nobs, self.nstar))
+        # for i in range(self.nstar):
+        #     ratio = np.abs((self.mag[:,i]-np.nanmedian(self.mag[:,i]))/np.nanstd(self.mag[:,i]))
+        #     self.outliers[:, i] = np.less_equal(ratio, 5)
 
         # median subtracted magnitudes & errors
         log = '[%.2f px] Calculate median subtracted magnitudes and error' % self.apsize
@@ -344,10 +371,16 @@ class Aperture(object):
         self.aplog.append(log)
         self.magnitude_ensemble()
 
-        if self.pars.modules_run['scint_noise_corr']:
+        if self.pars.modules_run['bad_frames_exclusion']:
+            log = '[%.2f px] Exclude "bad" frames' % self.apsize
+            self.aplog.append(log)
+            print log
+            self.bad_frames_exclusion()
 
+        if self.pars.modules_run['scint_noise_corr']:
             log = '[%.2f px] Rescale scintillation noise from RMS distribution' % self.apsize
             self.aplog.append(log)
+            print log
             self.scint_noise_corr()
 
         log = '[%.2f px] Optimize ensemble, after scintillation noise correction' % self.apsize
@@ -364,16 +397,18 @@ class Aperture(object):
 
         log = '[%.2f px] Optimize ensemble, after chi2 adjustment' % self.apsize
         self.aplog.append(log)
-        rlm, self.star_exclude = self.optimize_ensemble(star_exclude=[])
+        rlm, star_exclude = self.optimize_ensemble(star_exclude=[])
+        self.magnitude_ensemble(star_exclude=star_exclude)
 
-        self.magnitude_ensemble(star_exclude=self.star_exclude)
-
-        redchi2 = [rlm[i].polyfit_redchi2 for i in rlm]
-        log = '[%.2f px] Average redchi2 is now %.2f' % (self.apsize, np.average(redchi2))
+        rlm_redchi2 = [rlm[i].polyfit_redchi2 for i in rlm]
+        log = '[%.2f px] Average redchi2 is now %.2f' % (self.apsize, np.average(rlm_redchi2))
         self.aplog.append(log)
+
 
         #logging.info('[%.2f px] Create outlier rejection map' % apsize
         #self.outlier_rejection(apsize, rlm)
+
+
 
     def magnitude_ensemble(self, star_exclude=[]):
 
@@ -385,7 +420,8 @@ class Aperture(object):
         self.sigmag = np.sqrt((self.sigccd*self.sigscalefactor)**2+self.sigscint_corr**2)
 
         # weight
-        self.wt = self.outliers * (1/(self.sigmag**2))
+        #self.wt = self.outliers * (1/(self.sigmag**2))
+        self.wt = (1/(self.sigmag**2))
         self.medwt = stats.nanmedian(self.wt, 0)
 
         # create a 2d array with magnitude ensemble for each star in the field
@@ -412,6 +448,7 @@ class Aperture(object):
                 wt1[:, i] = 0
 
         # loop over all stars
+        rlm = {}
         for i in range(self.nstar):
 
             # save another copy of the weight array and exclude the target star self.targetid (set weight to 0)
@@ -434,6 +471,46 @@ class Aperture(object):
             self.eflux[i] = 10.0**(0.4*self.emagdiff[i])
             self.esigflux[i] = self.esigdiff[i]*self.eflux[i]/1.085736205
             self.signoise[i] = self.eflux[i]/self.esigflux[i]
+
+            # get rlm statistics
+            x = np.copy(self.dataset.airmass)
+            y = np.copy(self.eflux[i])
+            sig = np.copy(self.esigflux[i])
+            mask = self.frames_mask
+            rlm[i] = RobustStatistic(x[mask], y[mask], sig[mask])
+
+        self.rlm_redchi2 = np.asarray([rlm[i].polyfit_redchi2 for i in rlm])
+        self.rlm_polyfit = np.asarray([rlm[i].polyfit for i in rlm])
+        self.noise_rms = np.asarray([rlm[i].polyfit_rms for i in rlm])
+        self.star_exclude = star_exclude
+        self.stars_mask = np.ones(self.nstar, dtype=bool)
+        self.stars_mask[self.star_exclude] = False
+
+    def bad_frames_exclusion(self, starn=None, outlier_threshold=[-3.0, 10]):
+
+        # optimize ensemble, excluding very bad stars
+        #rlm, star_exclude = self.optimize_ensemble(customlimits=[0.3, 4])
+
+        # todo should do it for brightest star that is not in star_exclude
+
+        log = '[%.2f px] Bad frames rejection routine' % (self.apsize)
+
+        if not starn:
+            if self.targetid:
+                starn = self.targetid
+            else:
+                for i in xrange(self.nobs):
+                    if i not in star_exclude:
+                        starn = i
+
+        x = self.dataset.airmass
+        y = self.signoise[starn,:]/np.sqrt(self.dataset.exptime)
+
+        rlm = RobustStatistic(x, y, outlier_threshold=outlier_threshold)
+
+        self.frames_mask = rlm.outliers_mask
+        self.bad_frames_rlm_params = rlm.rlm_params
+
 
     def scint_noise_corr(self):
 
@@ -482,23 +559,20 @@ class Aperture(object):
         # recalculate magnitude ensemble
         self.magnitude_ensemble()
 
-        mags = np.arange(np.min(medmag-1), np.max(medmag+1), 0.01)
-
+        # store error budget
+        mags = np.arange(np.min(self.medmag)-1, np.max(self.medmag)+1, 0.01)
         sigmastar = np.sqrt(10**(-0.4*(mags-25)))/10**(-0.4*(mags-25))
         sigmasky = (np.sqrt(parea*(1+parea/psky))*np.median(sigsky))/10**-(0.4*(mags-25))
         sigmaread = math.sqrt(parea)*self.rdnoise/10**-(0.4*(mags-25))
         sigscint = stats.nanmedian(stats.nanmedian(self.sigscint_corr))
         totnoise = np.sqrt(sigmastar**2+sigmasky**2+sigmaread**2+sigscint**2)
 
-        # these can be used to plot noise model versus observed noise.
-        self.medmag = medmag
-        self.rms = rms
-        self.mags_model = mags
-        self.sigmastar_model = sigmastar
-        self.sigmasky_model = sigmasky
-        self.sigmaread_model = sigmaread
-        self.sigscint_model = [sigscint]*len(mags)
-        self.sigtot_model = np.sqrt(sigmastar**2+sigmasky**2+sigmaread**2+sigscint**2)
+        self.noise_mags_model = mags
+        self.noise_sigmastar_model = sigmastar
+        self.noise_sigmasky_model = sigmasky
+        self.noise_sigmaread_model = sigmaread
+        self.noise_sigscint_model = np.asarray([sigscint]*len(mags))
+        self.noise_sigtot_model = np.sqrt(sigmastar**2+sigmasky**2+sigmaread**2+sigscint**2)
 
         #plt.scatter(medmag, rms)
         #plt.plot(mags, sigmastar, label='Star noise')
@@ -533,9 +607,10 @@ class Aperture(object):
         for i in range(self.nstar):
 
             if not i in star_exclude and not i == self.targetid:
-                x = np.copy(self.p.dataset.airmass)
-                y = np.copy(self.eflux[i])
-                sig = np.copy(self.esigflux[i])
+                x = np.copy(self.dataset.airmass)[self.frames_mask]
+                y = np.copy(self.eflux[i])[self.frames_mask]
+                sig = np.copy(self.esigflux[i])[self.frames_mask]
+
                 rlm[i] = RobustStatistic(x, y, sig, chi2limit=chi2limit, customlimits=customlimits)
 
                 # get maximum and minimum redchi2
@@ -549,12 +624,13 @@ class Aperture(object):
 
         if not rlm[maxredchi2id].chi2_within_limits():
             star_exclude.append(maxredchi2id)
-            self.magnitude_ensemble( star_exclude=star_exclude)
+            self.magnitude_ensemble(star_exclude=star_exclude)
             log = '[%.2f px] Rejecting star n %i (redchi2 = %.3f, bottomlim = %.2f, uplim = %.2f)' % \
                   (self.apsize, maxredchi2id, maxredchi2,
                   rlm[maxredchi2id].polyfit_chi2limits[0],
                   rlm[maxredchi2id].polyfit_chi2limits[1])
             self.aplog.append(log)
+            print log
 
             return self.optimize_ensemble(chi2limit, customlimits, star_exclude)
 
@@ -566,47 +642,13 @@ class Aperture(object):
                    rlm[minredchi2id].polyfit_chi2limits[0],
                    rlm[minredchi2id].polyfit_chi2limits[1])
             self.aplog.append(log)
+            print log
             return self.optimize_ensemble(chi2limit, customlimits, star_exclude)
         else:
             log = '[%.2f px] Optimize ensemble output - Excluded stars: %s' % (self.apsize, star_exclude)
             self.aplog.append(log)
+            print log
             return rlm, star_exclude
-
-    def outlier_rejection(self, rlm=False):
-
-        # work in progress. Experiment?
-
-        if not rlm:
-
-            rlm = {}
-            # loop all stars exept those in star_exclude and the current star and run instance of RobustStatistics
-            # for each one
-            for i in range(self.nstar):
-                if not i in self.star_exclude and not i == self.targetid:
-                    x = np.copy(self.airmass)
-                    y = np.copy(self.eflux[i])
-                    sig = np.copy(self.esigflux[i])
-                    rlm[i] = RobustStatistic(x, y, sig)
-
-        residuals = np.empty((self.nstar, self.nobs))
-        errors = np.empty((self.nstar, self.nobs))
-        weights = np.empty((self.nstar, self.nobs))
-
-        for i in range(self.nstar-1):
-            weight = self.medwt[i]
-            for j in range(self.nobs-1):
-                if not i in self.star_exclude and not i == self.targetid:
-                    calculated = rlm[i].afit*self.airmass[j]+rlm[i].bfit
-                    observed = self.eflux[i][j]
-                    residuals[i][j] = np.abs(observed-calculated)
-                    errors[i][j] = self.esigflux[i][j]
-                    weights[i][j] = residuals[i][j]*weight
-        ratios_frame = np.nanmean(np.abs(weights), 0)
-        self.rlm = rlm
-        self.rejectionweights = ratios_frame
-        for i in range(self.nobs-1):
-            print ratios_frame[i]
-
 
 class MultiThread(Process):
 

@@ -14,14 +14,32 @@ np.set_printoptions(threshold=np.nan)
 
 class Plotting(object):
 
-    def __init__(self, photometry, pars=None):
+    def __init__(self, photometry, plot_out='', pars=None):
 
         logging.info('Initialize class Plotting')
 
         self.p = photometry
         self.d = photometry.dataset
         self.t = photometry.target
+        self.plot_out = plot_out
 
+    def plot_noise(self, apsize):
+
+        logging.info('Plotting noise budget')
+
+        p = self.p.aperture[apsize]
+
+        plt.scatter(p.medmag, p.rms)
+        plt.plot(p.mags_model, p.sigmastar_model, label='Star noise')
+        plt.plot(p.mags_model, p.sigmasky_model, label='Sky noise')
+        plt.plot(p.mags_model, p.sigmaread_model, label='Readout noise')
+        plt.plot(p.mags_model, p.sigscint_model, label='Scint. noise')
+        plt.yscale('log')
+        plt.plot(p.mags_model, p.sigtot_model, label='Tot. noise')
+        plt.legend(loc=4)
+
+        plt.savefig(os.path.join(self.plot_out, 'noise_budget.pdf'))
+        plt.show()
 
     def plot_all_flux(self, apsize, xval='bjd', maxstars=None, savefolder=None):
 

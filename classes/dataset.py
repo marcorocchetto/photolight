@@ -14,17 +14,17 @@ from list_frames import *
 
 class Dataset(object):
 
-    def __init__(self, target, odir=None, pars=None):
+    def __init__(self, target, odir=None, params=None):
 
         import datetime
 
         logging.info('Initialize class Lightcurve')
 
         # inherit parameters class from target
-        if not pars:
-            self.pars = target.pars
+        if not params:
+            self.params = target.params
         else:
-            self.pars = pars
+            self.params = params
 
         # store the target instance locally
         self.target = target
@@ -33,8 +33,8 @@ class Dataset(object):
         if odir:
             self.odir = odir
         else:
-            if self.pars.odir:
-                self.odir = self.pars.odir
+            if self.params.odir:
+                self.odir = self.params.odir
             else:
                 logging.error('Source directory not specified.')
                 sys.exit()
@@ -53,8 +53,7 @@ class Dataset(object):
         self.sigscint = None
         self.medsigscint = None
 
-        # set various parameters:
-        self.params = {}
+
 
         # get list of frames from source directory
         self.frames = list_frames(self.odir)
@@ -69,22 +68,23 @@ class Dataset(object):
                 logging.info('Frame %s is not plate solved.' % self.frames[n]['path'])
         logging.info('There are %i plate solved frames' % npltsolved)
 
-        if npltsolved < len(self.frames) and not self.pars.dataset['ignore_unsolved_frames']:
+        if npltsolved < len(self.frames) and not self.params.dataset['ignore_unsolved_frames']:
             logging.error('Some frames do not have a plate solution. Fix these '
                           'frames or set ignore_unsolved_frames = Off')
             sys.exit()
 
-        elif npltsolved < len(self.frames):
-            logging.error('Excluding non plate solved frames')
-            for n in self.frames:
-                if not self.frames[n]['plate_solved']:
-                    del self.frames[n] # @todo are we sure we're doing it correctly????
+        # elif npltsolved < len(self.frames):
+        #     logging.error('Excluding non plate solved frames')
+        #     for n in self.frames:
+        #         if not self.frames[n]['plate_solved']:
+        #             del self.frames[n] # @todo are we sure we're doing it correctly????
+        #
 
-        # Proceed only if there are sufficient frames
-        if npltsolved < self.pars.dataset['min_frames']:
-            logging.error('There are not enough plate solved frames to continue (min_frames = %i)'
-                          % self.pars.dataset['min_frames'])
-            sys.exit()
+        # # Proceed only if there are sufficient frames MOVE LATER TO CREATE MASTER
+        # if npltsolved < self.params.dataset['min_frames']:
+        #     logging.error('There are not enough plate solved frames to continue (min_frames = %i)'
+        #                   % self.params.dataset['min_frames'])
+        #     sys.exit()
 
         # Check if all frames have same size (in pixel), then save image size
         img_x = -1; img_y = -1
@@ -127,20 +127,20 @@ class Dataset(object):
 
         # set directory names
         self.datedir = os.path.join(self.target.mname, str(self.cdate))
-        self.telescopedir = os.path.join(self.datedir, self.pars.telescope['name'])
+        self.telescopedir = os.path.join(self.datedir, self.params.telescope['name'])
         self.framesdir = os.path.join(self.telescopedir, 'frames')
         self.masterdir = os.path.join(self.telescopedir, 'master')
 
         # master frame path
         self.masterfilepath = os.path.join(self.masterdir, 'master.fits')
-        self.masterpngpath = os.path.join(self.pars.wdir, self.masterdir, 'master.png')
+        self.masterpngpath = os.path.join(self.params.wdir, self.masterdir, 'master.png')
 
         # create directories for the julian date and telescope
-        create_dirs = [os.path.join(self.pars.wdir, self.target.mname),
-                       os.path.join(self.pars.wdir, self.datedir),
-                       os.path.join(self.pars.wdir, self.telescopedir),
-                       os.path.join(self.pars.wdir, self.framesdir),
-                       os.path.join(self.pars.wdir, self.masterdir)]
+        create_dirs = [os.path.join(self.params.wdir, self.target.mname),
+                       os.path.join(self.params.wdir, self.datedir),
+                       os.path.join(self.params.wdir, self.telescopedir),
+                       os.path.join(self.params.wdir, self.framesdir),
+                       os.path.join(self.params.wdir, self.masterdir)]
         for directory in create_dirs:
             if os.path.isdir(directory):
                 logging.info('The directory %s already exists. Remove it' % directory)
@@ -156,12 +156,12 @@ class Dataset(object):
     def create_master_frame(self):
 
         # Create Master Frame
-        logging.info('Creating master frame: %s ' % os.path.join(self.pars.wdir, self.masterfilepath))
-        if os.path.isfile(os.path.join(self.pars.wdir, self.masterfilepath)):
+        logging.info('Creating master frame: %s ' % os.path.join(self.params.wdir, self.masterfilepath))
+        if os.path.isfile(os.path.join(self.params.wdir, self.masterfilepath)):
             logging.info('Removing previous version of master frame')
-            os.remove(os.path.join(self.pars.wdir, self.masterfilepath))
+            os.remove(os.path.join(self.params.wdir, self.masterfilepath))
 
-        logging.info('Stack frames using plate solution of first %i frames' % self.pars.dataset['master_nstack'])
+        logging.info('Stack frames using plate solution of first %i frames' % self.params.dataset['master_nstack'])
 
         # get average RA and DEC of frames
         crval1 = []
@@ -175,13 +175,13 @@ class Dataset(object):
         logging.info('Average Dec is %s' % deg_to_sex(dec=crval2avg))
 
         logging.info('Selecting well aligned plate solved frames. Max offset is %.2f arcmin' %
-                     self.pars.dataset['frame_max_offset'])
+                     self.params.dataset['frame_max_offset'])
 
         # prepare a file with a list of well aligned plate solved frames. Used by iraf imcombine
-        stacklist = os.path.join(self.pars.wdir, self.masterdir, 'stacklist')
+        stacklist = os.path.join(self.params.wdir, self.masterdir, 'stacklist')
         tmpf = open(stacklist, 'w')
 
-        # loop the  frames and select only those that are not offset by more than self.pars.framemaxoffset
+        # loop the  frames and select only those that are not offset by more than self.params.framemaxoffset
         ra_shift = crval1avg  # average ra
         dec_shift = crval2avg  # average dec
         nstack = 0
@@ -189,37 +189,37 @@ class Dataset(object):
             ra = float(self.frames[n]['CRVAL1'])  # frame ra
             dec = float(self.frames[n]['CRVAL2'])  # frame dec
             offset = math.sqrt(math.fabs(ra-ra_shift)**2+math.fabs(dec-dec_shift)**2)*60
-            if offset < self.pars.dataset['frame_max_offset']:
-                    if nstack < self.pars.dataset['master_nstack']:
+            if offset < self.params.dataset['frame_max_offset']:
+                    if nstack < self.params.dataset['master_nstack']:
                         tmpf.write("%s\n" % self.frames[n]['path'])  # write path to file
                         nstack += 1
                     else:
                         break  # close loop when we reach the minimum number of frames
             else:
                 logging.warning('Frame %s is offset is %.1f, more than limit (%.1f)' %
-                                (self.frames[n]['path'], offset, self.pars.dataset['frame_max_offset']))
+                                (self.frames[n]['path'], offset, self.params.dataset['frame_max_offset']))
         tmpf.close()
 
         # nstack is the number of well aligned plate solved frames that can be stacked
-        if nstack == self.pars.dataset['master_nstack']:
+        if nstack == self.params.dataset['master_nstack']:
 
             logging.info('Crate master frame using iraf.imcombine')
-            if os.path.isfile(os.path.join(self.pars.wdir, self.masterfilepath)):
+            if os.path.isfile(os.path.join(self.params.wdir, self.masterfilepath)):
                 # remove the master file in case it exists (iraf cannot overwrite!)
                 logging.warning('The master frame already exists (%s). Remove it.'
-                                % os.path.join(self.pars.wdir, self.masterfilepath))
-                os.remove(os.path.join(self.pars.wdir, self.masterfilepath))
+                                % os.path.join(self.params.wdir, self.masterfilepath))
+                os.remove(os.path.join(self.params.wdir, self.masterfilepath))
 
             iraf.images()
             iraf.imcombine(input='@%s' % stacklist,
-                           output=os.path.join(self.pars.wdir, self.masterfilepath),
-                           scale=self.pars.iraf_imcombine['scale'],
-                           weight=self.pars.iraf_imcombine['weight'],
-                           combine=self.pars.iraf_imcombine['combine'],
+                           output=os.path.join(self.params.wdir, self.masterfilepath),
+                           scale=self.params.iraf_imcombine['scale'],
+                           weight=self.params.iraf_imcombine['weight'],
+                           combine=self.params.iraf_imcombine['combine'],
                            offsets='world',
                            Stdout=0)
-        if os.path.isfile(os.path.join(self.pars.wdir, self.masterfilepath)):
-            logging.info('Master frame correctly created: %s' % os.path.join(self.pars.wdir, self.masterfilepath))
+        if os.path.isfile(os.path.join(self.params.wdir, self.masterfilepath)):
+            logging.info('Master frame correctly created: %s' % os.path.join(self.params.wdir, self.masterfilepath))
         else:
             logging.error('Master frame could not be created')
             sys.exit()
@@ -229,44 +229,45 @@ class Dataset(object):
 
         # extract star catalogue from sextractor output
         logging.info('Run sextractor on master frame to obtain coordinates of stars in WCS.')
-        logging.info('Detection treshold is %i' % self.pars.dataset['detect_tresh'])
+        logging.info('Detection treshold is %i' % self.params.dataset['detect_tresh'])
 
         # master.cat contains the WCS coordinates of the stars to perform photometry on
-        sexrun = '%s ' % self.pars.sex
-        sexrun += '%s ' % os.path.join(self.pars.wdir, self.masterfilepath)
-        sexrun += '-c %s ' % os.path.join(self.pars.aconfdir, 'master.sex')
-        sexrun += '-PARAMETERS_NAME %s ' % os.path.join(self.pars.aconfdir, 'master.param')
-        sexrun += '-FILTER_NAME %s ' % os.path.join(self.pars.aconfdir, 'default.conv')
+        sexrun = '%s ' % self.params.sex
+        sexrun += '%s ' % os.path.join(self.params.wdir, self.masterfilepath)
+        sexrun += '-c %s ' % os.path.join(self.params.aconfdir, 'master.sex')
+        sexrun += '-PARAMETERS_NAME %s ' % os.path.join(self.params.aconfdir, 'master.param')
+        sexrun += '-FILTER_NAME %s ' % os.path.join(self.params.aconfdir, 'default.conv')
         sexrun += '-CATALOG_TYPE ASCII '
-        sexrun += '-DETECT_THRESH %i ' % self.pars.dataset['detect_tresh']
-        sexrun += '-CATALOG_NAME %s ' % os.path.join(self.pars.wdir, self.masterdir, 'master.cat')
+        sexrun += '-DETECT_THRESH %i ' % self.params.dataset['detect_tresh']
+        sexrun += '-CATALOG_NAME %s ' % os.path.join(self.params.wdir, self.masterdir, 'master.cat')
+
 
         p = subprocess.Popen(sexrun, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True).communicate()[0]
 
         # load catalogue of stars in array using numpy
-        mastercat_orig = np.loadtxt(os.path.join(self.pars.wdir, self.masterdir,  'master.cat'))
+        mastercat_orig = np.loadtxt(os.path.join(self.params.wdir, self.masterdir,  'master.cat'))
         mastercat_sorted = mastercat_orig[mastercat_orig[:,4].argsort()]  # sort by ISO FLUX (4th column)
 
         # remove edge star
         logging.info('Remove edge stars. Edge is %i pixels, frame is %ix%i'
-                     % (self.pars.dataset['edge_limit'], self.img_x, self.img_y))
+                     % (self.params.dataset['edge_limit'], self.img_x, self.img_y))
 
         mastercat_edge = []
         j = 0
         for line in mastercat_sorted:
-            if (line[2] < (self.img_x - self.pars.dataset['edge_limit'])) and (line[2] > self.pars.dataset['edge_limit']) and \
-               (line[3] < (self.img_y - self.pars.dataset['edge_limit'])) and (line[3] > self.pars.dataset['edge_limit']):  # y axis
+            if (line[2] < (self.img_x - self.params.dataset['edge_limit'])) and (line[2] > self.params.dataset['edge_limit']) and \
+               (line[3] < (self.img_y - self.params.dataset['edge_limit'])) and (line[3] > self.params.dataset['edge_limit']):  # y axis
                 mastercat_edge.append([line[0], line[1], line[2], line[3], line[4], line[5]])
                 j += 1
             else:
                 logging.info('Exclude edge star at x: %.1f y: %.1f ' % (line[2], line[3]))
 
-        # if the stars in the catalogue are more than the maximum allowed (self.pars.dataset['master_max_stars']), take only the last
-        # self.pars.dataset['master_max_stars'] stars in the list (the list is already sorted by flux in ascending order)
-        if j > self.pars.dataset['master_max_stars']:
-            logging.info("%i stars found (max %i). Exclude faintest stars. " % (j, self.pars.dataset['master_max_stars']))
+        # if the stars in the catalogue are more than the maximum allowed (self.params.dataset['master_max_stars']), take only the last
+        # self.params.dataset['master_max_stars'] stars in the list (the list is already sorted by flux in ascending order)
+        if j > self.params.dataset['master_max_stars']:
+            logging.info("%i stars found (max %i). Exclude faintest stars. " % (j, self.params.dataset['master_max_stars']))
             mastercat_final = []
-            for n in range(self.pars.dataset['master_max_stars']):
+            for n in range(self.params.dataset['master_max_stars']):
                 mastercat_final.append(mastercat_edge[j-n-1])
         else:
             mastercat_final = mastercat_edge
@@ -318,10 +319,10 @@ class Dataset(object):
         mastercat_tvmark = np.array(mastercat_tvmark)
 
         # write output to files
-        filename = os.path.join(self.pars.wdir, self.masterdir, 'master.final')
+        filename = os.path.join(self.params.wdir, self.masterdir, 'master.final')
         logging.info('Output file with catalogue stars: %s' % filename)
         np.savetxt(filename, mastercat_final)
-        filename = os.path.join(self.pars.wdir, self.masterdir, 'master.tvmark')
+        filename = os.path.join(self.params.wdir, self.masterdir, 'master.tvmark')
         logging.info('Output file with catalogue stars: %s' % filename)
         np.savetxt(filename, mastercat_tvmark)
 
@@ -336,43 +337,43 @@ class Dataset(object):
             coord['id'] = str(n)
             coords.append(coord)
             n += 1
-        fits_to_png(os.path.join(self.pars.wdir, self.masterdir, 'master.fits'),
-                    os.path.join(self.pars.wdir, self.masterdir, 'master.png'), coords)
+        fits_to_png(os.path.join(self.params.wdir, self.masterdir, 'master.fits'),
+                    os.path.join(self.params.wdir, self.masterdir, 'master.png'), coords)
 
         # get coordinates of stars
         logging.info('Get coordinate of stars from the master catalogue of stars')
-        coord = np.loadtxt(os.path.join(self.pars.wdir, self.masterdir, 'master.final'), unpack=True)
+        coord = np.loadtxt(os.path.join(self.params.wdir, self.masterdir, 'master.final'), unpack=True)
         self.ra = coord[0]
         self.dec = coord[1]
         self.nstar = len(coord[0])
 
 
         # Create SExtractor catalogue for all frames and
-        if self.pars.dataset['run_all_sex']:
+        if self.params.dataset['run_all_sex']:
 
             logging.info('Create final SExtractor catalogue for all frames')
 
             for frame in self.frames:
                 basename = os.path.splitext(os.path.basename(self.frames[frame]['path']))[0]
-                cataloguename = os.path.join(self.pars.wdir, self.framesdir, basename) + '.cat'
+                cataloguename = os.path.join(self.params.wdir, self.framesdir, basename) + '.cat'
 
-                sexrun = '%s ' % self.pars.sex
+                sexrun = '%s ' % self.params.sex
                 sexrun += '%s ' % self.frames[frame]['path']
-                sexrun += '-c %s ' % os.path.join(self.pars.aconfdir, 'master.sex')
-                sexrun += '-PARAMETERS_NAME %s ' % os.path.join(self.pars.aconfdir, 'default.param')
-                sexrun += '-FILTER_NAME %s ' % os.path.join(self.pars.aconfdir, 'default.conv')
+                sexrun += '-c %s ' % os.path.join(self.params.aconfdir, 'master.sex')
+                sexrun += '-PARAMETERS_NAME %s ' % os.path.join(self.params.aconfdir, 'default.param')
+                sexrun += '-FILTER_NAME %s ' % os.path.join(self.params.aconfdir, 'default.conv')
                 sexrun += '-CATALOG_TYPE ASCII '
                 sexrun += '-DETECT_THRESH 60 '
                 sexrun += '-CATALOG_NAME %s ' % cataloguename
                 p = subprocess.Popen(sexrun, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True).communicate()[0]
 
             #  get FWHM of all stars in all frames
-            mastercat = np.loadtxt(os.path.join(self.pars.wdir, self.masterdir, 'master.final'))
+            mastercat = np.loadtxt(os.path.join(self.params.wdir, self.masterdir, 'master.final'))
             self.fwhm = np.empty((self.nobs, self.nstar))
             i = 0
             for frame in self.frames:
                 basename = os.path.splitext(os.path.basename(self.frames[frame]['path']))[0]
-                cataloguename = os.path.join(self.pars.wdir, self.framesdir, basename) + '.cat'
+                cataloguename = os.path.join(self.params.wdir, self.framesdir, basename) + '.cat'
                 catalogue = np.loadtxt(cataloguename)
                 k = 0
                 for line in mastercat:
@@ -409,29 +410,29 @@ class Dataset(object):
         iraf.observatory.setParam('obsid', 'obspars')
         iraf.observatory.setParam('command', 'set')
         iraf.observatory.setParam('observatory', 'obspars')
-        iraf.observatory.setParam('name', self.pars.dataset.observatory['name'])
-        iraf.observatory.setParam('longitu', str(self.pars.dataset.observatory['longitude']))
-        iraf.observatory.setParam('altitud', str(self.pars.dataset.observatory['elevation']))
-        iraf.observatory.setParam('latitud', str(self.pars.dataset.observatory['latitude']))
+        iraf.observatory.setParam('name', self.params.dataset.observatory['name'])
+        iraf.observatory.setParam('longitu', str(self.params.dataset.observatory['longitude']))
+        iraf.observatory.setParam('altitud', str(self.params.dataset.observatory['elevation']))
+        iraf.observatory.setParam('latitud', str(self.params.dataset.observatory['latitude']))
         iraf.observatory.setParam('override', 'obspars')
 
-        f1 = open(os.path.join(self.pars.wdir, self.framesdir, 'imagelist'), 'w')
+        f1 = open(os.path.join(self.params.wdir, self.framesdir, 'imagelist'), 'w')
         for n in self.frames:
             f1.write(self.frames[n]['path'] + '\n')
         f1.close()
 
         logging.info('Calculating LMST')
-        f = open(os.path.join(self.pars.wdir, self.framesdir, 'lmst-calc'), 'w')
+        f = open(os.path.join(self.params.wdir, self.framesdir, 'lmst-calc'), 'w')
         f.write("observat = 'obspars'\n")
         f.write("lmst = mst (@'DATE-OBS', @'TIME-OBS', obsdb (observat, 'longitude'))\n")
         f.write("quit")
         f.close()
-        iraf.asthedit(images='@'+os.path.join(self.pars.wdir, self.framesdir, 'imagelist'),
-                      commands=os.path.join(self.pars.wdir, self.framesdir, 'lmst-calc'),
+        iraf.asthedit(images='@'+os.path.join(self.params.wdir, self.framesdir, 'imagelist'),
+                      commands=os.path.join(self.params.wdir, self.framesdir, 'lmst-calc'),
                       Stdout=1, verbose='no')
 
         logging.info('Calculating airmass (an extra header EAIRMASS is added to the fits files)')
-        iraf.setairmass(images='@'+os.path.join(self.pars.wdir, self.framesdir, 'imagelist'), observa='obspars', \
+        iraf.setairmass(images='@'+os.path.join(self.params.wdir, self.framesdir, 'imagelist'), observa='obspars', \
                         intype='beginning', outtype='effective', st='lmst', \
                         ra='OBJCTRA', dec='OBJCTDEC', equinox='EPOCH', ut='TIME-OBS', \
                         date='DATE-OBS', exposur='EXPTIME', airmass='EAIRMASS', utmiddl='utmiddle', \
@@ -440,9 +441,9 @@ class Dataset(object):
         # Calculate BJD and HJD for each frame using vartools
         logging.info('Calculate BJD and HJD for each frame')
 
-        bjd_filename = os.path.join(self.pars.wdir, self.framesdir, 'bjdtbd')
-        hjd_filename = os.path.join(self.pars.wdir, self.framesdir, 'hjd')
-        utc_filename = os.path.join(self.pars.wdir, self.framesdir, 'utc')
+        bjd_filename = os.path.join(self.params.wdir, self.framesdir, 'bjdtbd')
+        hjd_filename = os.path.join(self.params.wdir, self.framesdir, 'hjd')
+        utc_filename = os.path.join(self.params.wdir, self.framesdir, 'utc')
 
         # load UTC for each frame from header
         import datetime
@@ -458,39 +459,39 @@ class Dataset(object):
         dec = self.target.dec_d
 
         # run vartools -converttime, write the BJD values to bjd_filename
-        runvartools = self.pars.vartools + " -i " + utc_filename
+        runvartools = self.params.vartools + " -i " + utc_filename
         runvartools += " -quiet -readformat 0 inpututc '%Y-%M-%DT%h:%m:%s' 1 2 3 "
         runvartools += "-converttime input jd inputsys-utc output bjd outputsys-tdb radec fix %f %f " % (ra, dec)
-        runvartools += "ephemfile %s/de421.bsp " % self.pars.vartoolsdir
-        runvartools += "leapsecfile %s/naif0010.tls " % self.pars.vartoolsdir
-        runvartools += "planetdatafile %s/pck00010.tpc " % self.pars.vartoolsdir
-        runvartools += "coords fix %f %f %f "  % (self.pars.observatory['latitude'],
-                                                  self.pars.observatory['longitude'],
-                                                  self.pars.observatory['elevation'])
+        runvartools += "ephemfile %s/de421.bsp " % self.params.vartoolsdir
+        runvartools += "leapsecfile %s/naif0010.tls " % self.params.vartoolsdir
+        runvartools += "planetdatafile %s/pck00010.tpc " % self.params.vartoolsdir
+        runvartools += "coords fix %f %f %f "  % (self.params.observatory['latitude'],
+                                                  self.params.observatory['longitude'],
+                                                  self.params.observatory['elevation'])
         runvartools += "-o %s " % bjd_filename
 
         p = subprocess.Popen(runvartools, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True).communicate()[0]
         self.bjd = np.loadtxt(bjd_filename, unpack=True)[0]
 
         # run vartools -converttime, write the HJD values to hjd_filename
-        runvartools = self.pars.vartools + " -i " + utc_filename
+        runvartools = self.params.vartools + " -i " + utc_filename
         runvartools += " -quiet -readformat 0 inpututc '%Y-%M-%DT%h:%m:%s' 1 2 3 "
         runvartools += "-converttime input jd inputsys-utc output hjd outputsys-utc radec fix %f %f " % (ra, dec)
-        runvartools += "ephemfile %s/de421.bsp " % self.pars.vartoolsdir
-        runvartools += "leapsecfile %s/naif0010.tls " % self.pars.vartoolsdir
-        runvartools += "planetdatafile %s/pck00010.tpc " % self.pars.vartoolsdir
-        runvartools += "coords fix %f %f %f " % (self.pars.observatory['latitude'],
-                                                 self.pars.observatory['longitude'],
-                                                 self.pars.observatory['elevation'])
+        runvartools += "ephemfile %s/de421.bsp " % self.params.vartoolsdir
+        runvartools += "leapsecfile %s/naif0010.tls " % self.params.vartoolsdir
+        runvartools += "planetdatafile %s/pck00010.tpc " % self.params.vartoolsdir
+        runvartools += "coords fix %f %f %f " % (self.params.observatory['latitude'],
+                                                 self.params.observatory['longitude'],
+                                                 self.params.observatory['elevation'])
         runvartools += "-o %s " % hjd_filename
         p = subprocess.Popen(runvartools, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True).communicate()[0]
         self.hjd = np.loadtxt(hjd_filename, unpack=True)[0]
 
         # Calculate theoretical scintillation noise theoretical (will be added in quadrature to the photometry.ccdnoise)
         logging.info('Calculate theoretical scintillation noise')
-        scintwav = (self.pars.filter['midwav']/550.0)**(-7.0/12.0)
-        scintalti = math.exp(-self.pars.observatory['elevation']/8000.0)
-        scintap = self.pars.telescope['aperture']**(2.0/3.0)
+        scintwav = (self.params.filter['midwav']/550.0)**(-7.0/12.0)
+        scintalti = math.exp(-self.params.observatory['elevation']/8000.0)
+        scintap = self.params.telescope['aperture']**(2.0/3.0)
         scintfact = 0.09*scintalti*scintwav/scintap
         self.sigscint = scintfact*(self.airmass**1.75)/np.sqrt(2.*self.exptime)
         self.medsigscint = stats.nanmedian(self.sigscint, 0)

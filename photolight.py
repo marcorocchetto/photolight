@@ -15,6 +15,7 @@ from parameters import Parameters
 from target import Target
 from dataset import Dataset
 from photometry import Photometry
+from platesolve import Platesolve
 
 import functions, img_scale, list_frames
 from functions import *
@@ -40,12 +41,19 @@ def main():
     output_filename = os.path.abspath(os.path.expanduser(options.output_filename))
     source_directory = os.path.abspath(os.path.expanduser(options.source_directory))
 
-    pars = Parameters(param_filename)
+    params = Parameters(param_filename)
+    target = Target(params)
 
-    target = Target(pars)
     dataset = Dataset(target, odir=source_directory)
+
+    #Plate solve all frames
+    if params.platesolve['platesolve']:
+        psol = Platesolve(dataset, overwrite=params.platesolve['overwrite'])
+        psol.astrometry()
+
     dataset.create_master_frame()
-    photometry = Photometry(dataset, pars)
+
+    photometry = Photometry(dataset, params)
 
     pickle.dump(photometry, open(output_filename, 'wb'))
     logging.info('Photometry instance saved in %s' % output_filename)
