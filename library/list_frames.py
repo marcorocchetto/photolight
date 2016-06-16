@@ -56,6 +56,9 @@ def list_frames(dir, exclude=[]):
                     if not key in header:
                         valid_frames[k]['plate_solved'] = False  # the frame is not platesolved
                         break
+                    else:
+                        valid_frames[k][key] = header[key]
+
 
                 if not 'plate_solved' in valid_frames[k]:
                     valid_frames[k]['plate_solved'] = True  # the frame is platesolved

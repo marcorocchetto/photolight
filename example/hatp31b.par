@@ -1,15 +1,16 @@
 [General]
 verbose = True
-wdir = /tmp
+wdir = example/wdir
 compute_fluxes = True
 bad_frames_exclusion = True
+scint_noise_corr = True
 rescale_errorbars = True
-log = photolight.log
+log = hatp31.log
 
 [Target]
-name = V700Cyg
-ra = 20 31 05.25
-dec = +38 47 00.5
+name = HAT-P-31b
+ra = 18:06:09.0
+dec = +26:25:36
 
 [Observatory]
 name = ULO
@@ -21,36 +22,36 @@ latitude = 51.6133
 name = c14w
 egain = 2.53
 rdnoise = 10
-# telescope aperture in cm!
 aperture = 35
 
 [Filter]
 name = Rc
 midwav = 650
 
-[Photometry]
-# add photometry aperture radii here (separated by commas, eg, 7,8,9)
-multithread = True
-apertures = 7
-tool = iraf
-
-
 [Dataset]
+
 # create sexetractor catalogues for all stars, and determine fwhm of all stars in all frames
 run_all_sex = False
+
 # chip edge limits in pixels. Stars in the edges of the chip will be excluded
-edge_limit = 30
+edge_limit = 30 
+
 # number of frames to stack to create master frame.
-master_nstack = 5
+master_nstack = 5   
+ 
 # max number of stars to keep in the master catalogue
-master_max_stars = 50
+master_max_stars = 200
+
 # maximum offset allowed for frames in arcminutes
 frame_max_offset = 3
-# Detection threshold for Sextractor. Default is 15
+
+# Detection threshold for Sextractor
 detect_tresh = 15
+
 # Automatically ignore frames without plate solution
 ignore_unsolved_frames = True
-# Minimum number of frame to proceed with photometry
+
+# Minimum number of frames to proceed with photometry
 min_frames = 5
 
 [HeadersKeys]
@@ -71,7 +72,7 @@ ccdtemp_units = celsius
 
 [PlateSolve]
 # plate solve frames
-platesolve = True
+platesolve = False
 # overwrite plate solution of frames that are already solved
 overwrite = False
 # astrometry.net solve-field path
@@ -86,6 +87,16 @@ search_radius = 1
 flags = --scale-units arcsecperpix --scale-low 0.83 --scale-high 0.90 --overwrite
 
 
+[Photometry]
+multithread = False
+apertures = 10
+tool = iraf 
+
+[IRAF combine]
+scale = mode
+weight = mode
+combine = median
+
 [IRAF photometry]
 irafcall = True
 salgori = median
@@ -95,10 +106,9 @@ calgori = centroid
 cbox = 10
 maxshif = 3
 
-[IRAF combine]
-scale = mode
-weight = mode
-combine = median
+
+[Logging]
+logger = ./hatp31.log
 
 [Executables]
 sex = /usr/local/bin/sex
